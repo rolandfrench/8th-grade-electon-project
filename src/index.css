@@ -1,0 +1,28 @@
+body {
+  font-family:
+    -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial,
+    sans-serif;
+  margin: auto;
+  max-width: 38rem;
+  padding: 2rem;
+  background-color: black;
+  color: white;
+
+}
+
+@keyframes fadeInDown {
+  0% {
+    opacity: .75;
+    transform: translateY(-40px);
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.fade-in-down {
+  animation: fadeInDown 1.5s ease-in forwards;
+  animation-iteration-count: infinite;
+  animation-direction: alternate;
+}
