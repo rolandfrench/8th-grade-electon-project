@@ -1,5 +1,22 @@
-const { app, BrowserWindow } = require('electron');
+const { app, BrowserWindow, ipcMain } = require('electron');
 const path = require('node:path');
+
+// Function to start scanning
+async function scanTag() {
+  try {
+    console.log("Waiting for SSH tag...");
+    const tag = await rfid.startScanning();
+    console.log("Tag ID detected:", tag.uid);
+    return tag.uid; 
+  } catch (error) {
+    console.error("Scanning error:", error);
+  }
+}
+
+// Listen for a request from the UI
+ipcMain.handle('get-rfid-tag', async () => {
+  return await scanTag();
+});
 
 // Handle creating/removing shortcuts on Windows when installing/uninstalling.
 if (require('electron-squirrel-startup')) {
@@ -19,8 +36,8 @@ const createWindow = () => {
   // and load the index.html of the app.
   mainWindow.loadFile(path.join(__dirname, 'index.html'));
 
-  // // Open the DevTools.
-  // mainWindow.webContents.openDevTools();
+  // Open the DevTools.
+  mainWindow.webContents.openDevTools();
 };
 
 // This method will be called when Electron has finished

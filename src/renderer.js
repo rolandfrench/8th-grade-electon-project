@@ -1,2 +1,5 @@
-const information = document.getElementById('info')
-information.innerText = `This app is using Chrome (v${window.versions.chrome()}), Node.js (v${window.versions.node()}), and Electron (v${window.versions.electron()})`
+window.addEventListener('DOMContentLoaded', async () => {
+  console.log("App ready, waiting for RFID...");
+  const tagId = await window.rfidAPI.readTag();
+  console.log("Scanned on startup:", tagId);
+});
