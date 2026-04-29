@@ -1,17 +1,165 @@
-<!doctype html>
-<html>
-  <head>
-    <meta charset="UTF-8" />
-    <title>Hello World!</title>
-    <link rel="stylesheet" href="index.css" />
-  </head>
-  <body>
-    <div class="fade-in-down">
-      <img src="img/pika.png" style="width:5em;">
-    </div>
-    <h1>Hello from Electron renderer!</h1>
-    <p>👋</p>
-    <p id="info"></p>
-  </body>
-  <script src="./renderer.js"></script>
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>How to Play</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    html, body {
+      width: 100%; height: 100%;
+      background: #111;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-family: system-ui, -apple-system, sans-serif;
+    }
+    .page {
+      width: min(92vw, 92vh * 2.2);
+      max-width: 1400px;
+      text-align: center;
+      position: relative;
+      padding: clamp(24px, 4vw, 60px) clamp(16px, 3vw, 48px);
+    }
+    .tl { top: 0; left: 0; border-width: 2px 0 0 2px; }
+    .tr { top: 0; right: 0; border-width: 2px 2px 0 0; }
+    .bl { bottom: 0; left: 0; border-width: 0 0 2px 2px; }
+    .br { bottom: 0; right: 0; border-width: 0 2px 2px 0; }
+    .eyebrow {
+      font-size: clamp(10px, 1.1vw, 16px);
+      font-weight: 500; letter-spacing: 3px; color: #555; margin-bottom: clamp(8px, 1vw, 18px);
+    }
+    .headline {
+      font-size: clamp(22px, 3.5vw, 56px);
+      font-weight: 700; color: #eee; margin-bottom: clamp(20px, 2.5vw, 48px);
+    }
+    .scene-wrap { width: 100%; overflow: hidden; position: relative; }
+    svg { display: block; width: 100%; }
+    .step-note {
+      font-size: clamp(10px, 1vw, 15px);
+      color: #444; letter-spacing: 1px; margin-top: clamp(14px, 1.8vw, 32px); margin-bottom: clamp(6px, 0.8vw, 14px);
+    }
+    .tagline-main { font-size: clamp(13px, 1.6vw, 26px); font-weight: 500; color: #ccc; margin-bottom: clamp(4px, 0.5vw, 10px); }
+    .tagline-sub  { font-size: clamp(11px, 1.1vw, 18px); color: #555; }
+
+    .tagline-main {
+  margin-top: 30px;
+    }
+ .tagline-sub {
+  margin-top: 20px;
+  }
+  </style>
+</head>
+<body>
+<div class="page">
+  <div class="corner tl"></div>
+  <div class="corner tr"></div>
+  <div class="corner bl"></div>
+  <div class="corner br"></div>
+
+  <h1 class="headline">HOW TO PLAY</h1>
+
+
+  <div class="scene-wrap">
+    <svg id="scene" viewBox="0 0 680 260" xmlns="http://www.w3.org/2000/svg">
+      <defs>
+        <clipPath id="bc">
+          <circle cx="340" cy="72" r="60"/>
+        </clipPath>
+      </defs>
+
+      <ellipse id="shadow" cx="340" cy="133" rx="10" ry="4" fill="#000" opacity="0"/>
+
+      <g id="ball">
+        <rect x="315" y="125" width="50" height="15" rx="2" fill="#1c1c1c" stroke="#3c3c3c" stroke-width="1"/>
+        <circle cx="340" cy="72" r="60" fill="#1c1c1c" stroke="#303030" stroke-width="1.5"/>
+        <rect x="280" y="12" width="120" height="60" fill="#232323" clip-path="url(#bc)"/>
+        <rect x="280" y="65" width="120" height="14" fill="#2a2a2a" clip-path="url(#bc)"/>
+        <circle cx="340" cy="72" r="13" fill="#1c1c1c" stroke="#3c3c3c" stroke-width="2"/>
+        <circle cx="340" cy="72" r="6.5" fill="#252525" stroke="#484848" stroke-width="1.2"/>
+         <rect x="316" y="125" width="48" height="10" rx="2" fill="#1c1c1c"/>
+
+      </g>
+
+      <rect x="130" y="132" width="420" height="28" rx="5" fill="#1d1d1d" stroke="#2a2a2a" stroke-width="1"/>
+      <line x1="130" y1="158" x2="550" y2="158" stroke="#212121" stroke-width="1"/>
+
+      <rect x="130" y="145" width="420" height="100" fill="#191919" stroke="#252525" stroke-width="1"/>
+
+
+      <rect x="158" y="243" width="44" height="8" rx="4" fill="#2a2a2a"/>
+      <rect x="478" y="243" width="44" height="8" rx="4" fill="#2a2a2a"/>
+    </svg>
+  </div>
+
+  <p class="tagline-main">Set the figure on the top surface of the console.</p>
+  <p class="tagline-sub">The console detects it automatically.</p>
+</div>
+
+<script>
+  const ball   = document.getElementById('ball');
+  const shadow = document.getElementById('shadow');
+
+
+  const START_Y = -132;
+  const HOVER_Y = -10;
+  const LAND_Y  = 4;
+
+  const LOOP     = 4400;
+  const DESCENT  = 2800;
+  const SNAP_DUR = 190;
+  const HOLD     = 900;
+  const FADEOUT  = 400;
+
+  let t0 = null;
+  const lerp  = (a,b,t) => a + (b-a)*t;
+  const clamp = (v,lo,hi) => Math.max(lo, Math.min(hi, v));
+
+  function easeInOutQuart(t) {
+    return t < 0.5 ? 8*t*t*t*t : 1 - Math.pow(-2*t+2, 4)/2;
+  }
+  function snapEase(t) { return Math.pow(t, 0.25); }
+
+
+  function frame(ts) {
+    if (!t0) t0 = ts;
+    const e = (ts - t0) % LOOP;
+
+    let ballY, sRx, sOp;
+
+    if (e < DESCENT) {
+      const t = easeInOutQuart(e / DESCENT);
+      ballY  = lerp(START_Y, HOVER_Y, t);
+      sRx    = lerp(4, 32, t);
+      sOp    = lerp(0, 0.28, t);
+
+    } else if (e < DESCENT + SNAP_DUR) {
+      const t = snapEase((e - DESCENT) / SNAP_DUR);
+      ballY  = lerp(HOVER_Y, LAND_Y, t);
+      sRx    = lerp(32, 50, t);
+      sOp    = lerp(0.28, 0.62, t);
+
+    } else if (e < DESCENT + SNAP_DUR + HOLD) {
+      ballY  = LAND_Y;
+      sRx    = 50;
+      sOp    = 0.62;
+
+    } else {
+      const t = clamp((e - DESCENT - SNAP_DUR - HOLD) / FADEOUT, 0, 1);
+      ballY  = lerp(LAND_Y, LAND_Y - 12, t * t);
+      sRx    = lerp(50, 10, t);
+      sOp    = lerp(0.62, 0, t);
+    }
+
+    ball.setAttribute('transform', `translate(0,${ballY})`);
+    shadow.setAttribute('rx', sRx);
+    shadow.setAttribute('opacity', sOp);
+
+
+    requestAnimationFrame(frame);
+  }
+
+  requestAnimationFrame(frame);
+</script>
+</body>
 </html>
