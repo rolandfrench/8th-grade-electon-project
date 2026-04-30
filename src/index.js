@@ -1,27 +1,6 @@
 const { app, BrowserWindow, ipcMain } = require('electron');
 const path = require('node:path');
-
-// Function to start scanning
-async function scanTag() {
-  try {
-    console.log("Waiting for SSH tag...");
-    const tag = await rfid.startScanning();
-    console.log("Tag ID detected:", tag.uid);
-    return tag.uid; 
-  } catch (error) {
-    console.error("Scanning error:", error);
-  }
-}
-
-// Listen for a request from the UI
-ipcMain.handle('get-rfid-tag', async () => {
-  return await scanTag();
-});
-
-// Handle creating/removing shortcuts on Windows when installing/uninstalling.
-if (require('electron-squirrel-startup')) {
-  app.quit();
-}
+const rfid = require('rc522-rfid-promise');
 
 const createWindow = () => {
   // Create the browser window.
@@ -39,6 +18,19 @@ const createWindow = () => {
   // Open the DevTools.
   mainWindow.webContents.openDevTools();
 };
+
+// Handling the RFID request
+ipcMain.handle('get-rfid-tag', async () => {
+  console.log("Main process: Starting scan...");
+  try {
+    const data = await rfid.startScanning();
+    console.log("Main process: Tag found!", data.uid);
+    return data.uid;
+  } catch (err) {
+    console.error("RFID Error:", err);
+    return { error: err.message };
+  }
+});
 
 // This method will be called when Electron has finished
 // initialization and is ready to create browser windows.
