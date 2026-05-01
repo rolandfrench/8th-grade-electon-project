@@ -1,79 +1,28 @@
-const SPI = require('pi-spi');
-const spi = SPI.initialize('/dev/spidev0.0');
-spi.clockSpeed(1e6);
+const RPiMfrc522 = require('rpi-mfrc522');
 
-// MFRC522 Hex Commands
-const Commands = {
-    REQC: 0x26,      // Request Command
-    ANTICOLL: 0x93,  // Anticollision
-    TRANSCEIVE: 0x0C // Data transfer command
-};
+// Initialize with default SPI settings (device 0.0)
+let mfrc522 = new RPiMfrc522();
 
-// MFRC522 Registers
-const Regs = {
-    FIFOData: 0x09,
-    Command: 0x01,
-    BitFraming: 0x0D,
-    FIFOLevel: 0x0A
-};
+async function run() {
+  try {
+    await mfrc522.init();
+    console.log("Reader ready. Scan a card...");
 
-/**
- * Basic SPI communication helpers
- */
-function writeReg(addr, val) {
-    const buf = Buffer.from([(addr << 1) & 0x7E, val]);
-    spi.write(buf, () => {});
-}
-
-function readReg(addr) {
-    return new Promise(res => {
-        const buf = Buffer.from([(addr << 1) & 0x7E | 0x80, 0]);
-        spi.transfer(buf, (err, data) => res(data[1]));
-    });
-}
-
-/**
- * The Scan Logic
- */
-async function requestTag() {
-    writeReg(Regs.Command, 0x00);         // Idle
-    writeReg(Regs.FIFOLevel, 0x80);       // Clear FIFO
-    writeReg(Regs.FIFOData, Commands.REQC);
-    writeReg(Regs.Command, Commands.TRANSCEIVE);
-    writeReg(Regs.BitFraming, 0x87);      // Start transmission
-
-    // Wait a tiny bit for hardware response
-    await new Promise(r => setTimeout(r, 50));
-
-    const level = await readReg(Regs.FIFOLevel);
-    return level > 0; // If FIFO has data, a card replied!
-}
-
-async function getUID() {
-    writeReg(Regs.FIFOLevel, 0x80);
-    writeReg(Regs.FIFOData, Commands.ANTICOLL);
-    writeReg(Regs.FIFOData, 0x20); // NVB (Number of Valid Bits)
-    writeReg(Regs.Command, Commands.TRANSCEIVE);
-    writeReg(Regs.BitFraming, 0x00);
-
-    await new Promise(r => setTimeout(r, 50));
-
-    const level = await readReg(Regs.FIFOLevel);
-    if (level >= 5) {
-        const uid = [];
-        for (let i = 0; i < 4; i++) {
-            uid.push((await readReg(Regs.FIFOData)).toString(16).toUpperCase().padStart(2, '0'));
+    while (true) {
+      if (await mfrc522.cardPresent()) {
+        let uid = await mfrc522.antiCollision();
+        if (uid) {
+          console.log('Card detected! UID:', uid.join(':'));
+          // Add your logic here (e.g., check against a database)
         }
-        return uid.join(':');
+        await mfrc522.resetPCD(); // Reset for next scan
+      }
+      // Small delay to prevent CPU pinning
+      await new Promise(resolve => setTimeout(resolve, 100));
     }
-    return null;
+  } catch (error) {
+    console.error('Error:', error.message);
+  }
 }
 
-// MAIN LOOP
-console.log("--- Scanning for Tags ---");
-setInterval(async () => {
-    if (await requestTag()) {
-        const id = await getUID();
-        if (id) console.log(`[${new Date().toLocaleTimeString()}] Tag Detected: ${id}`);
-    }
-}, 500);
+run();
