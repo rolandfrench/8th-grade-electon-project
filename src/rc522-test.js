@@ -2,7 +2,7 @@ const SPI = require('pi-spi');
 
 // Initialize SPI 0.0
 const rc522 = SPI.initialize('/dev/spidev0.0');
-rc522.clockSpeed(1e6); // 1MHz is stable for RC522
+rc522.clockSpeed(500000); // 500kHz
 
 // RC522 Register Addresses (shifted for the protocol)
 const VERSION_REG = 0x37 << 1; 
