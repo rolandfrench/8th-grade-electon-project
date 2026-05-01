@@ -1,52 +1,79 @@
 const SPI = require('pi-spi');
+const spi = SPI.initialize('/dev/spidev0.0');
+spi.clockSpeed(500000); // 500kHz
 
-// Initialize SPI 0.0
-const rc522 = SPI.initialize('/dev/spidev0.0');
-rc522.clockSpeed(500000); // 500kHz
+// MFRC522 Hex Commands
+const Commands = {
+    REQC: 0x26,      // Request Command
+    ANTICOLL: 0x93,  // Anticollision
+    TRANSCEIVE: 0x0C // Data transfer command
+};
 
-// RC522 Register Addresses (shifted for the protocol)
-const VERSION_REG = 0x37 << 1; 
+// MFRC522 Registers
+const Regs = {
+    FIFOData: 0x09,
+    Command: 0x01,
+    BitFraming: 0x0D,
+    FIFOLevel: 0x0A
+};
 
 /**
- * Reads a register from the RC522
- * Protocol: (Address << 1) | 0x80 for Read
+ * Basic SPI communication helpers
  */
-function readRegister(reg, callback) {
-    const cmd = Buffer.from([reg | 0x80, 0x00]);
-    rc522.transfer(cmd, cmd.length, (err, data) => {
-        if (err) return console.error("SPI Error:", err);
-        callback(data[1]);
+function writeReg(addr, val) {
+    const buf = Buffer.from([(addr << 1) & 0x7E, val]);
+    spi.write(buf, () => {});
+}
+
+function readReg(addr) {
+    return new Promise(res => {
+        const buf = Buffer.from([(addr << 1) & 0x7E | 0x80, 0]);
+        spi.transfer(buf, (err, data) => res(data[1]));
     });
 }
 
 /**
- * Writes to a register
- * Protocol: (Address << 1) & 0x7E for Write
+ * The Scan Logic
  */
-function writeRegister(reg, value) {
-    const cmd = Buffer.from([reg & 0x7E, value]);
-    rc522.write(cmd, (err) => {
-        if (err) console.error("Write Error:", err);
-    });
+async function requestTag() {
+    writeReg(Regs.Command, 0x00);         // Idle
+    writeReg(Regs.FIFOLevel, 0x80);       // Clear FIFO
+    writeReg(Regs.FIFOData, Commands.REQC);
+    writeReg(Regs.Command, Commands.TRANSCEIVE);
+    writeReg(Regs.BitFraming, 0x87);      // Start transmission
+
+    // Wait a tiny bit for hardware response
+    await new Promise(r => setTimeout(r, 50));
+
+    const level = await readReg(Regs.FIFOLevel);
+    return level > 0; // If FIFO has data, a card replied!
 }
 
-// 1. Perform a Soft Reset via SPI Command
-writeRegister(0x01 << 1, 0x0F); 
+async function getUID() {
+    writeReg(Regs.FIFOLevel, 0x80);
+    writeReg(Regs.FIFOData, Commands.ANTICOLL);
+    writeReg(Regs.FIFOData, 0x20); // NVB (Number of Valid Bits)
+    writeReg(Regs.Command, Commands.TRANSCEIVE);
+    writeReg(Regs.BitFraming, 0x00);
 
-// 2. Wait for chip to wake up and check version
-setTimeout(() => {
-    readRegister(VERSION_REG, (version) => {
-        console.log("---------------------------------------");
-        console.log(`RC522 Raw Register Check`);
-        console.log(`Version Reg (0x37): 0x${version.toString(16)}`);
-        
-        if (version === 0x91 || version === 0x92) {
-            console.log("Status: ONLINE (Authentic chip detected)");
-        } else if (version === 0x88) {
-            console.log("Status: ONLINE (Clone chip detected)");
-        } else {
-            console.log("Status: OFFLINE (Check wiring/RST pin)");
+    await new Promise(r => setTimeout(r, 50));
+
+    const level = await readReg(Regs.FIFOLevel);
+    if (level >= 5) {
+        const uid = [];
+        for (let i = 0; i < 4; i++) {
+            uid.push((await readReg(Regs.FIFOData)).toString(16).toUpperCase().padStart(2, '0'));
         }
-        console.log("---------------------------------------");
-    });
-}, 100);
+        return uid.join(':');
+    }
+    return null;
+}
+
+// MAIN LOOP
+console.log("--- Scanning for Tags ---");
+setInterval(async () => {
+    if (await requestTag()) {
+        const id = await getUID();
+        if (id) console.log(`[${new Date().toLocaleTimeString()}] Tag Detected: ${id}`);
+    }
+}, 500);
