@@ -1,10 +1,14 @@
 const { app, BrowserWindow, ipcMain } = require('electron');
 const path = require('node:path');
-const rfid = require('rc522-rfid-promise');
+const { spawn } = require('child_process');
+const pythonExe = path.join(__dirname, 'env', 'bin', 'python3');
+const scriptPath = path.join(__dirname, 'bridge.py');
 
-const createWindow = () => {
-  // Create the browser window.
-  const mainWindow = new BrowserWindow({
+let mainWindow;
+let pythonBridge;
+
+function createWindow() {
+    mainWindow = new BrowserWindow({
     width: 800,
     height: 600,
     webPreferences: {
@@ -14,29 +18,107 @@ const createWindow = () => {
 
   // and load the index.html of the app.
   mainWindow.loadFile(path.join(__dirname, 'index.html'));
+    
+    // Open the DevTools.
+    mainWindow.webContents.openDevTools();
+}
 
-  // Open the DevTools.
-  mainWindow.webContents.openDevTools();
-};
+const bridge = spawn(pythonExe, [scriptPath], {
+    stdio: ['ignore', 'pipe', 'pipe'], // Ignore stdin, pipe out/err
+    env: { ...process.env, PYTHONUNBUFFERED: '1' }
+});
+
+bridge.stdout.on('data', (data) => {
+    const output = data.toString().trim();
+    if (output === "READY") {
+        console.log("Python Bridge is confirmed ALIVE and scanning.");
+    } else {
+        console.log("Tag Scanned:", output);
+        // Send to your Renderer window
+        if (mainWindow) mainWindow.webContents.send('rfid-data', output);
+    }
+});
+
+bridge.stderr.on('data', (data) => {
+    console.error(`Python Logic Error: ${data}`);
+});
 
 // Handling the RFID request
 ipcMain.handle('get-rfid-tag', async () => {
   console.log("Main process: Starting scan...");
   try {
-    const data = await rfid.startScanning();
-    console.log("Main process: Tag found!", data.uid);
-    return data.uid;
+    
+    // Point to the Python executable inside your new virtual environment
+    const pythonPath = path.join(__dirname, 'env', 'bin', 'python3');
+    const pythonProcess = spawn(pythonPath, ['bridge.py'], {
+        env: { 
+            ...process.env, 
+            PYTHONUNBUFFERED: "1" // This forces Python to send data immediately
+        }
+    });
+
+    console.log("-----------------------------------------");
+    console.log("NODE-PYTHON VENV BRIDGE ACTIVE");
+    console.log(`Using Python: ${pythonPath}`);
+    console.log("-----------------------------------------");
+
+    pythonProcess.stdout.on('data', (data) => {
+        console.log("\x1b[32m%s\x1b[0m", `*** TAG RECEIVED: ${data.toString().trim()} ***`);
+        return data.toString().trim();
+    });
+
+    pythonProcess.stderr.on('data', (data) => {
+        // We ignore the library warnings, but log actual errors
+        const msg = data.toString();
+        if (msg.includes('Error')) console.error(`Python Error: ${msg}`);
+    });
+
+    process.on('SIGINT', () => {
+        pythonProcess.kill();
+        process.exit();
+    });
+    
   } catch (err) {
     console.error("RFID Error:", err);
     return { error: err.message };
   }
 });
 
+// THE STARTUP LOGIC
+function startPythonBridge() {
+    const pythonExe = path.join(__dirname, 'env', 'bin', 'python3');
+    const scriptPath = path.join(__dirname, 'bridge.py');
+
+    // Spawn the process
+    pythonBridge = spawn(pythonExe, [scriptPath], {
+        env: { ...process.env, PYTHONUNBUFFERED: '1' }
+    });
+
+    pythonBridge.stdout.on('data', (data) => {
+        const tagId = data.toString().trim();
+        if (tagId === "READY") {
+            console.log("Hardware: RFID Reader is active.");
+        } else {
+            console.log(`Hardware: Scanned Tag ${tagId}`);
+            // Send the data to the UI (Renderer)
+            if (mainWindow) {
+                mainWindow.webContents.send('from-python', tagId);
+            }
+        }
+    });
+
+    pythonBridge.stderr.on('data', (data) => {
+        console.error(`Python Logic Error: ${data}`);
+    });
+}
+
+
 // This method will be called when Electron has finished
 // initialization and is ready to create browser windows.
 // Some APIs can only be used after this event occurs.
 app.whenReady().then(() => {
   createWindow();
+  startPythonBridge();
 
   // On OS X it's common to re-create a window in the app when the
   // dock icon is clicked and there are no other windows open.

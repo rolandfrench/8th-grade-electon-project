@@ -1,4 +1,8 @@
-const { contextBridge, ipcRenderer } = require('electron/renderer')
+const { contextBridge, ipcRenderer } = require('electron/renderer');
+
+contextBridge.exposeInMainWorld('rfidAPI', {
+  onTagScanned: (callback) => ipcRenderer.on('from-python', (_event, value) => callback(value))
+});
 
 contextBridge.exposeInMainWorld('versions', {
   node: () => process.versions.node,
@@ -7,7 +11,3 @@ contextBridge.exposeInMainWorld('versions', {
 });
 
 console.log("Preload script loaded!");
-
-contextBridge.exposeInMainWorld('rfidAPI', {
-  readTag: () => ipcRenderer.invoke('get-rfid-tag')
-});
