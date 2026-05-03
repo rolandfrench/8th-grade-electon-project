@@ -112,6 +112,32 @@ function startPythonBridge() {
     });
 }
 
+let isGameRunning = false;
+let activeGame = '';
+
+function launchGame(gameName) {
+    if (isGameRunning || activeGame == gameName) return; // Ignore scans if a game is already open
+    
+    isGameRunning = true;
+    mainWindow.hide(); // Hide your Electron UI
+
+    let romPath = `/home/roland/roms/${gameName}.gba`;
+
+    const retroarch = spawn('retroarch', [
+        '-c', '~/kiosk.cfg',
+        '-L', '/home/roland/snap/retroarch/current/.config/retroarch/cores/mgba_libretro.so',
+        romPath,
+        '-f'
+    ]);
+
+    retroarch.on('close', () => {
+        isGameRunning = false;
+        activeGame = '';
+        mainWindow.show();
+        mainWindow.focus();
+    });
+}
+
 
 // This method will be called when Electron has finished
 // initialization and is ready to create browser windows.
@@ -119,6 +145,8 @@ function startPythonBridge() {
 app.whenReady().then(() => {
   createWindow();
   startPythonBridge();
+
+  setTimeout(10000, launchGame('launchGame'));
 
   // On OS X it's common to re-create a window in the app when the
   // dock icon is clicked and there are no other windows open.
