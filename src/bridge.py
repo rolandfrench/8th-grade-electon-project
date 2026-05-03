@@ -1,19 +1,11 @@
 import sys
-import time
-import signal
 from unittest.mock import MagicMock
-from pirc522 import RFID
-
 # Mock the broken library so it doesn't crash the script
 sys.modules["RPi"] = MagicMock()
 sys.modules["RPi.GPIO"] = MagicMock()
 
-def signal_handler(sig, frame):
-    # Perform hardware cleanup here (close serial port, etc)
-    sys.exit(0)
-signal.signal(signal.SIGTERM, signal_handler)
-
-# ... your RFID loop ...
+import time
+from pirc522 import RFID
 
 # Initialize the library
 # bus=0, device=0 corresponds to /dev/spidev0.0
