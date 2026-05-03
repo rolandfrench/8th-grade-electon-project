@@ -117,7 +117,7 @@ function launchGame(gameName) {
 
     isGameRunning = true;
     activeGame = gameName;
-    mainWindow.hide(); // Hide your Electron UI
+    //mainWindow.hide(); // Hide your Electron UI
 
     let romPath = `/home/roland/roms/${gameName}.gba`;
     console.log("romPath:: ", romPath);
@@ -135,7 +135,7 @@ function launchGame(gameName) {
         isGameRunning = false;
         activeGame = '';
         startRFID();
-        mainWindow.show();
+        //mainWindow.show();
         mainWindow.focus();
     });
 }
