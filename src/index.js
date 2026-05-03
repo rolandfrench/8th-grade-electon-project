@@ -119,9 +119,11 @@ function launchGame(gameName) {
     if (isGameRunning || activeGame == gameName) return; // Ignore scans if a game is already open
     
     isGameRunning = true;
-    mainWindow.hide(); // Hide your Electron UI
+    activeGame = gameName;
+    //mainWindow.hide(); // Hide your Electron UI
 
     let romPath = `/home/roland/roms/${gameName}.gba`;
+    console.log("romPath:: ", romPath);
 
     const retroarch = spawn('retroarch', [
         '-c', '~/kiosk.cfg',
@@ -133,8 +135,8 @@ function launchGame(gameName) {
     retroarch.on('close', () => {
         isGameRunning = false;
         activeGame = '';
-        mainWindow.show();
-        mainWindow.focus();
+        // mainWindow.show();
+        // mainWindow.focus();
     });
 }
 
