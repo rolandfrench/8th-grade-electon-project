@@ -3,13 +3,11 @@ import time
 import signal
 from unittest.mock import MagicMock
 
-# Mocking for environments without GPIO (remove these if running on actual Pi)
-try:
-    from pirc522 import RFID
-except ImportError:
-    sys.modules["RPi"] = MagicMock()
-    sys.modules["RPi.GPIO"] = MagicMock()
-    from pirc522 import RFID
+from pirc522 import RFID
+
+# Mock the broken library so it doesn't crash the script
+sys.modules["RPi"] = MagicMock()
+sys.modules["RPi.GPIO"] = MagicMock()
 
 # Initialize hardware
 rc522 = RFID(bus=0, device=0, pin_rst=25)
