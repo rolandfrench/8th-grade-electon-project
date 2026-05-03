@@ -1,7 +1,7 @@
 let games = {
-    "123545": "minish",
-    "123545": "country",
-    "123545": "ruby",
+    "136831181658": "minish",
+    "13683132165250": "country",
+    "13683223165161": "ruby",
 }
 
 // This runs in your UI/Webpage
@@ -10,10 +10,11 @@ window.rfidAPI.onTagScanned((tagId) => {
     let game = games[tagId];
     if (games && game) {
         console.log("game:: ", game);
-        window.launchGame.launchGame(game);
+        window.electronAPI.launchGame(game);
+
         // Update your HTML
         const display = document.getElementById('status');
-        display.innerText = `Last Scanned: ${tagId}`;
+        display.innerText = `Last Scanned: ${game}`;
         display.style.color = 'green';
     }
 });
