@@ -127,10 +127,12 @@ function launchGame(gameName) {
 
     const retroarch = spawn('retroarch', [
         '-c', '~/kiosk.cfg',
-        '-L', '/home/roland/snap/retroarch/current/.config/retroarch/cores/mgba_libretro.so',
+        '-L', '/usr/lib/aarch64-linux-gnu/libretro/mgba_libretro.so',
         romPath,
         '-f'
     ]);
+
+    //retroarch -c ~/kiosk.cfg -L /usr/lib/aarch64-linux-gnu/libretro/mgba_libretro.so /home/roland/Downloads/minish.gba -f
 
     retroarch.on('close', () => {
         isGameRunning = false;
