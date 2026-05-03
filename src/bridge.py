@@ -10,10 +10,15 @@ from pirc522 import RFID
 import signal
 def signal_handler(sig, frame):
     # Perform hardware cleanup here (close serial port, etc)
+    try:
+        rc522.cleanup() # Added: Releases GPIO pins so they can be reused
+    except:
+        pass
     sys.exit(0)
-signal.signal(signal.SIGTERM, signal_handler)
 
-# ... your RFID loop ...
+# Register both SIGTERM (standard kill) and SIGINT (Ctrl+C)
+signal.signal(signal.SIGTERM, signal_handler)
+signal.signal(signal.SIGINT, signal_handler)
 
 # Initialize the library
 # bus=0, device=0 corresponds to /dev/spidev0.0
