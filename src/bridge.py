@@ -1,39 +1,57 @@
 import sys
-from unittest.mock import MagicMock
-# Mock the broken library so it doesn't crash the script
-sys.modules["RPi"] = MagicMock()
-sys.modules["RPi.GPIO"] = MagicMock()
-
 import time
-from pirc522 import RFID
+import signal
+from unittest.mock import MagicMock
 
-# Initialize the library
-# bus=0, device=0 corresponds to /dev/spidev0.0
-rc522 = RFID(bus=0, device=0, pin_rst=25) 
+# Mocking for environments without GPIO (remove these if running on actual Pi)
+try:
+    from pirc522 import RFID
+except ImportError:
+    sys.modules["RPi"] = MagicMock()
+    sys.modules["RPi.GPIO"] = MagicMock()
+    from pirc522 import RFID
 
-print("BRIDGE_READY")
-sys.stdout.flush()
+# Initialize hardware
+rc522 = RFID(bus=0, device=0, pin_rst=25)
+
+def cleanup_and_exit(sig, frame):
+    """Gracefully shuts down the hardware before exiting."""
+    try:
+        rc522.cleanup() # Important: Releases GPIO pins
+    except:
+        pass
+    sys.exit(0)
+
+# Register both termination signals
+signal.signal(signal.SIGTERM, cleanup_and_exit) # Sent by pythonBridge.kill()
+signal.signal(signal.SIGINT, cleanup_and_exit)  # Sent by Ctrl+C
 
 def run():
+    # Signal to Node.js that the loop is starting
+    print("READY") 
+    sys.stdout.flush()
+
     while True:
-        # Request a tag
         (error, tag_type) = rc522.request()
         
         if not error:
-            # Collision detection (pulls the UID)
             (error, uid) = rc522.anticoll()
             if not error:
-                # Format UID as a string
+                # Convert UID to hex or string
                 id_str = "".join([str(x) for x in uid])
                 print(id_str)
                 sys.stdout.flush()
-                # Cooldown to prevent double-reads
-                time.sleep(1)
+                
+                # Cooldown to prevent multiple reads of the same tag
+                time.sleep(1.5)
         
+        # Small sleep to prevent 100% CPU usage
         time.sleep(0.1)
 
-try:
-    run()
-except Exception as e:
-    sys.stderr.write(f"Error: {str(e)}\n")
-    sys.exit(1)
+if __name__ == "__main__":
+    try:
+        run()
+    except Exception as e:
+        sys.stderr.write(f"Error: {str(e)}\n")
+        sys.stderr.flush()
+        sys.exit(1)
