@@ -2,54 +2,46 @@ import sys
 import time
 import signal
 from unittest.mock import MagicMock
-
 from pirc522 import RFID
 
 # Mock the broken library so it doesn't crash the script
 sys.modules["RPi"] = MagicMock()
 sys.modules["RPi.GPIO"] = MagicMock()
 
-# Initialize hardware
-rc522 = RFID(bus=0, device=0, pin_rst=25)
-
-def cleanup_and_exit(sig, frame):
-    """Gracefully shuts down the hardware before exiting."""
-    try:
-        rc522.cleanup() # Important: Releases GPIO pins
-    except:
-        pass
+def signal_handler(sig, frame):
+    # Perform hardware cleanup here (close serial port, etc)
     sys.exit(0)
+signal.signal(signal.SIGTERM, signal_handler)
 
-# Register both termination signals
-signal.signal(signal.SIGTERM, cleanup_and_exit) # Sent by pythonBridge.kill()
-signal.signal(signal.SIGINT, cleanup_and_exit)  # Sent by Ctrl+C
+# ... your RFID loop ...
+
+# Initialize the library
+# bus=0, device=0 corresponds to /dev/spidev0.0
+rc522 = RFID(bus=0, device=0, pin_rst=25) 
+
+print("BRIDGE_READY")
+sys.stdout.flush()
 
 def run():
-    # Signal to Node.js that the loop is starting
-    print("READY") 
-    sys.stdout.flush()
-
     while True:
+        # Request a tag
         (error, tag_type) = rc522.request()
         
         if not error:
+            # Collision detection (pulls the UID)
             (error, uid) = rc522.anticoll()
             if not error:
-                # Convert UID to hex or string
+                # Format UID as a string
                 id_str = "".join([str(x) for x in uid])
                 print(id_str)
                 sys.stdout.flush()
-                
-                # Cooldown to prevent multiple reads of the same tag
-                time.sleep(1.5)
+                # Cooldown to prevent double-reads
+                time.sleep(1)
         
-        # Small sleep to prevent 100% CPU usage
         time.sleep(0.1)
 
-if __name__ == "__main__":
-    try:
-        run()
-    except Exception as e:
-        sys.stderr.write(f"Error: {str(e)}\n")
-        sys.stderr.flush()
-        sys.exit(1)
+try:
+    run()
+except Exception as e:
+    sys.stderr.write(f"Error: {str(e)}\n")
+    sys.exit(1)
