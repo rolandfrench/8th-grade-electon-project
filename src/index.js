@@ -148,7 +148,7 @@ app.whenReady().then(() => {
   createWindow();
   startPythonBridge();
 
-  setTimeout(() => (launchGame('launchGame')), 10000);
+  setTimeout(() => (launchGame('minish')), 10000);
 
   // On OS X it's common to re-create a window in the app when the
   // dock icon is clicked and there are no other windows open.
