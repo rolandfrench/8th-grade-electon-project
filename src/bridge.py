@@ -7,6 +7,14 @@ sys.modules["RPi.GPIO"] = MagicMock()
 import time
 from pirc522 import RFID
 
+import signal
+def signal_handler(sig, frame):
+    # Perform hardware cleanup here (close serial port, etc)
+    sys.exit(0)
+signal.signal(signal.SIGTERM, signal_handler)
+
+# ... your RFID loop ...
+
 # Initialize the library
 # bus=0, device=0 corresponds to /dev/spidev0.0
 rc522 = RFID(bus=0, device=0, pin_rst=25) 
