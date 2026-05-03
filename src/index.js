@@ -43,48 +43,6 @@ bridge.stderr.on('data', (data) => {
     console.error(`Python Logic Error: ${data}`);
 });
 
-// // Handling the RFID request
-// ipcMain.handle('get-rfid-tag', async () => {
-//   console.log("Main process: Starting scan...");
-//   try {
-
-//     // Point to the Python executable inside your new virtual environment
-//     const pythonPath = path.join(__dirname, 'env', 'bin', 'python3');
-//     const pythonProcess = spawn(pythonPath, ['bridge.py'], {
-//         env: { 
-//             ...process.env, 
-//             PYTHONUNBUFFERED: "1" // This forces Python to send data immediately
-//         }
-//     });
-
-//     console.log("-----------------------------------------");
-//     console.log("NODE-PYTHON VENV BRIDGE ACTIVE");
-//     console.log(`Using Python: ${pythonPath}`);
-//     console.log("-----------------------------------------");
-
-//     pythonProcess.stdout.on('data', (data) => {
-//         console.log("\x1b[32m%s\x1b[0m", `*** TAG RECEIVED: ${data.toString().trim()} ***`);
-//         return data.toString().trim();
-//     });
-
-//     pythonProcess.stderr.on('data', (data) => {
-//         // We ignore the library warnings, but log actual errors
-//         const msg = data.toString();
-//         if (msg.includes('Error')) console.error(`Python Error: ${msg}`);
-//     });
-
-//     process.on('SIGINT', () => {
-//         pythonProcess.kill();
-//         process.exit();
-//     });
-
-//   } catch (err) {
-//     console.error("RFID Error:", err);
-//     return { error: err.message };
-//   }
-// });
-
-
 /**
  * Starts the RFID process if it isn't already running.
  */
@@ -99,6 +57,7 @@ function startRFID() {
 
     // Spawn the process
     pythonBridge = spawn(pythonExe, [scriptPath], {
+        detached: true,
         env: { ...process.env, PYTHONUNBUFFERED: '1' }
     });
 
@@ -136,8 +95,12 @@ function handleScannedData(tagId) {
 function stopRFID() {
     if (pythonBridge) {
         console.log("RFID: Stopping process...");
-        pythonBridge.kill(); // Sends SIGTERM
-        // Note: pythonBridge becomes null in the 'close' event handler above
+
+        if (pythonBridge) {
+            // The minus sign (-) before the pid kills the entire process group
+            process.kill(-pythonBridge.pid, 'SIGTERM');
+            pythonBridge = null;
+        }
     } else {
         console.log("RFID: Nothing to stop.");
     }
@@ -148,7 +111,7 @@ let activeGame = '';
 
 function launchGame(gameName) {
     if (isGameRunning || activeGame == gameName) return; // Ignore scans if a game is already open
-    
+
     // Once we get what we need, shut it down
     stopRFID();
 
