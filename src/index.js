@@ -43,46 +43,46 @@ bridge.stderr.on('data', (data) => {
     console.error(`Python Logic Error: ${data}`);
 });
 
-// Handling the RFID request
-ipcMain.handle('get-rfid-tag', async () => {
-  console.log("Main process: Starting scan...");
-  try {
+// // Handling the RFID request
+// ipcMain.handle('get-rfid-tag', async () => {
+//   console.log("Main process: Starting scan...");
+//   try {
     
-    // Point to the Python executable inside your new virtual environment
-    const pythonPath = path.join(__dirname, 'env', 'bin', 'python3');
-    const pythonProcess = spawn(pythonPath, ['bridge.py'], {
-        env: { 
-            ...process.env, 
-            PYTHONUNBUFFERED: "1" // This forces Python to send data immediately
-        }
-    });
+//     // Point to the Python executable inside your new virtual environment
+//     const pythonPath = path.join(__dirname, 'env', 'bin', 'python3');
+//     const pythonProcess = spawn(pythonPath, ['bridge.py'], {
+//         env: { 
+//             ...process.env, 
+//             PYTHONUNBUFFERED: "1" // This forces Python to send data immediately
+//         }
+//     });
 
-    console.log("-----------------------------------------");
-    console.log("NODE-PYTHON VENV BRIDGE ACTIVE");
-    console.log(`Using Python: ${pythonPath}`);
-    console.log("-----------------------------------------");
+//     console.log("-----------------------------------------");
+//     console.log("NODE-PYTHON VENV BRIDGE ACTIVE");
+//     console.log(`Using Python: ${pythonPath}`);
+//     console.log("-----------------------------------------");
 
-    pythonProcess.stdout.on('data', (data) => {
-        console.log("\x1b[32m%s\x1b[0m", `*** TAG RECEIVED: ${data.toString().trim()} ***`);
-        return data.toString().trim();
-    });
+//     pythonProcess.stdout.on('data', (data) => {
+//         console.log("\x1b[32m%s\x1b[0m", `*** TAG RECEIVED: ${data.toString().trim()} ***`);
+//         return data.toString().trim();
+//     });
 
-    pythonProcess.stderr.on('data', (data) => {
-        // We ignore the library warnings, but log actual errors
-        const msg = data.toString();
-        if (msg.includes('Error')) console.error(`Python Error: ${msg}`);
-    });
+//     pythonProcess.stderr.on('data', (data) => {
+//         // We ignore the library warnings, but log actual errors
+//         const msg = data.toString();
+//         if (msg.includes('Error')) console.error(`Python Error: ${msg}`);
+//     });
 
-    process.on('SIGINT', () => {
-        pythonProcess.kill();
-        process.exit();
-    });
+//     process.on('SIGINT', () => {
+//         pythonProcess.kill();
+//         process.exit();
+//     });
     
-  } catch (err) {
-    console.error("RFID Error:", err);
-    return { error: err.message };
-  }
-});
+//   } catch (err) {
+//     console.error("RFID Error:", err);
+//     return { error: err.message };
+//   }
+// });
 
 // THE STARTUP LOGIC
 function startPythonBridge() {
@@ -159,6 +159,12 @@ app.whenReady().then(() => {
       createWindow();
     }
   });
+});
+
+// Option A: One-way communication (Fire and forget)
+ipcMain.on('launch-game', (event, data) => {
+  console.log("Received from renderer:", data);
+  launchGame(data);
 });
 
 // Quit when all windows are closed, except on macOS. There, it's common
