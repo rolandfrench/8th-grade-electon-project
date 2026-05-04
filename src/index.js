@@ -192,7 +192,9 @@ function launchGame(gameName) {
         }
     }
 
-    startLED(gameColors[gameName]['color1'], gameColors[gameName]['color2']);
+    setTimeout(() => {
+        startLED(gameColors[gameName]['color1'], gameColors[gameName]['color2']);
+    }, 100);
 
     isGameRunning = true;
     activeGame = gameName;
