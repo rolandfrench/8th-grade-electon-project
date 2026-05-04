@@ -194,7 +194,7 @@ function launchGame(gameName) {
 
     setTimeout(() => {
         startLED(gameColors[gameName]['color1'], gameColors[gameName]['color2']);
-    }, 1000);
+    }, 250);
 
     isGameRunning = true;
     activeGame = gameName;
@@ -229,7 +229,10 @@ function launchGame(gameName) {
 app.whenReady().then(() => {
     createWindow();
     startRFID();
-    startLED('pink', 'blue');
+    stopLED();
+    setTimeout(() => {
+        startLED('pink', 'blue');
+    }, 250);
 
     // Debug
     // setTimeout(() => (launchGame('minish')), 10000);
