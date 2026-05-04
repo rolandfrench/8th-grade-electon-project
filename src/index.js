@@ -154,6 +154,9 @@ function stopLED() {
         console.log("LED: Stopping process...");
 
         if (pythonBridgeLED) {
+            
+            pythonBridgeLED.kill('SIGTERM');
+
             // The minus sign (-) before the pid kills the entire process group
             process.kill(-pythonBridgeLED.pid, 'SIGTERM');
             pythonBridgeLED = null;
