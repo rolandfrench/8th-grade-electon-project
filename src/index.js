@@ -24,25 +24,25 @@ function createWindow() {
     mainWindow.webContents.openDevTools();
 }
 
-const bridge = spawn(pythonExe, [scriptPath], {
-    stdio: ['ignore', 'pipe', 'pipe'], // Ignore stdin, pipe out/err
-    env: { ...process.env, PYTHONUNBUFFERED: '1' }
-});
+// const bridge = spawn(pythonExe, [scriptPath], {
+//     stdio: ['ignore', 'pipe', 'pipe'], // Ignore stdin, pipe out/err
+//     env: { ...process.env, PYTHONUNBUFFERED: '1' }
+// });
 
-bridge.stdout.on('data', (data) => {
-    const output = data.toString().trim();
-    if (output === "READY") {
-        console.log("Python Bridge is confirmed ALIVE and scanning.");
-    } else {
-        console.log("Tag Scanned:", output);
-        // Send to your Renderer window
-        if (mainWindow) mainWindow.webContents.send('rfid-data', output);
-    }
-});
+// bridge.stdout.on('data', (data) => {
+//     const output = data.toString().trim();
+//     if (output === "READY") {
+//         console.log("Python Bridge is confirmed ALIVE and scanning.");
+//     } else {
+//         console.log("Tag Scanned:", output);
+//         // Send to your Renderer window
+//         if (mainWindow) mainWindow.webContents.send('rfid-data', output);
+//     }
+// });
 
-bridge.stderr.on('data', (data) => {
-    console.error(`Python Logic Error: ${data}`);
-});
+// bridge.stderr.on('data', (data) => {
+//     console.error(`Python Logic Error: ${data}`);
+// });
 
 /**
  * Starts the RFID process if it isn't already running.
