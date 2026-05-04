@@ -5,7 +5,8 @@ const pythonExe = path.join(__dirname, 'env', 'bin', 'python3');
 const scriptPath = path.join(__dirname, 'bridge.py');
 
 let mainWindow;
-let pythonBridge = null;
+let pythonBridgeRFID = null;
+let pythonBridgeLED = null;
 
 function createWindow() {
     mainWindow = new BrowserWindow({
@@ -47,21 +48,21 @@ bridge.stderr.on('data', (data) => {
  * Starts the RFID process if it isn't already running.
  */
 function startRFID() {
-    if (pythonBridge) {
+    if (pythonBridgeRFID) {
         console.log("RFID: Already running.");
         return;
     }
 
     const pythonExe = path.join(__dirname, 'env', 'bin', 'python3');
-    const scriptPath = path.join(__dirname, 'bridge_led.py');
+    const scriptPath = path.join(__dirname, 'bridge_rfid.py');
 
     // Spawn the process
-    pythonBridge = spawn(pythonExe, [scriptPath], {
+    pythonBridgeRFID = spawn(pythonExe, [scriptPath], {
         detached: true,
         env: { ...process.env, PYTHONUNBUFFERED: '1' }
     });
 
-    pythonBridge.stdout.on('data', (data) => {
+    pythonBridgeRFID.stdout.on('data', (data) => {
         const tagId = data.toString().trim();
         if (tagId === "READY") {
             console.log("Hardware: RFID Reader is active.");
@@ -72,13 +73,41 @@ function startRFID() {
         }
     });
 
-    pythonBridge.stderr.on('data', (data) => {
+    pythonBridgeRFID.stderr.on('data', (data) => {
         console.error(`Python Error: ${data}`);
     });
 
-    pythonBridge.on('close', (code) => {
+    pythonBridgeRFID.on('close', (code) => {
         console.log(`Python process exited with code ${code}`);
-        pythonBridge = null; // Reset reference so it can be restarted
+        pythonBridgeRFID = null; // Reset reference so it can be restarted
+    });
+}
+
+/**
+ * Starts the LED process if it isn't already running.
+ */
+function startLED() {
+    if (pythonBridgeLED) {
+        console.log("LED: Already running.");
+        return;
+    }
+
+    const pythonExe = path.join(__dirname, 'env', 'bin', 'python3');
+    const scriptPath = path.join(__dirname, 'bridge_led.py');
+
+    // Spawn the process
+    pythonBridgeLED = spawn(pythonExe, [scriptPath], {
+        detached: true,
+        env: { ...process.env, PYTHONUNBUFFERED: '1' }
+    });
+
+    pythonBridgeLED.stderr.on('data', (data) => {
+        console.error(`Python Error: ${data}`);
+    });
+
+    pythonBridgeLED.on('close', (code) => {
+        console.log(`Python process exited with code ${code}`);
+        pythonBridgeLED = null; // Reset reference so it can be restarted
     });
 }
 
@@ -93,18 +122,36 @@ function handleScannedData(tagId) {
  * Stops the RFID process gracefully.
  */
 function stopRFID() {
-    if (pythonBridge) {
+    if (pythonBridgeRFID) {
         console.log("RFID: Stopping process...");
 
-        if (pythonBridge) {
+        if (pythonBridgeRFID) {
             // The minus sign (-) before the pid kills the entire process group
-            process.kill(-pythonBridge.pid, 'SIGTERM');
-            pythonBridge = null;
+            process.kill(-pythonBridgeRFID.pid, 'SIGTERM');
+            pythonBridgeRFID = null;
         }
     } else {
         console.log("RFID: Nothing to stop.");
     }
 }
+
+/**
+ * Stops the LED process gracefully.
+ */
+function stopLED() {
+    if (pythonBridgeLED) {
+        console.log("LED: Stopping process...");
+
+        if (pythonBridgeLED) {
+            // The minus sign (-) before the pid kills the entire process group
+            process.kill(-pythonBridgeLED.pid, 'SIGTERM');
+            pythonBridgeLED = null;
+        }
+    } else {
+        console.log("LED: Nothing to stop.");
+    }
+}
+
 
 let isGameRunning = false;
 let activeGame = '';
@@ -135,6 +182,7 @@ function launchGame(gameName) {
         isGameRunning = false;
         activeGame = '';
         startRFID();
+        startLED();
         //mainWindow.show();
         mainWindow.focus();
     });
@@ -147,6 +195,7 @@ function launchGame(gameName) {
 app.whenReady().then(() => {
     createWindow();
     startRFID();
+    startLED();
 
     // Debug
     // setTimeout(() => (launchGame('minish')), 10000);
