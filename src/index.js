@@ -86,17 +86,28 @@ function startRFID() {
 /**
  * Starts the LED process if it isn't already running.
  */
-function startLED() {
+function startLED(color1, color2) {
     if (pythonBridgeLED) {
         console.log("LED: Already running.");
         return;
     }
 
+    let colors = {
+        pink: ['255', '0', '150'],
+        blue: ['0', '50', '255'],
+        red: ['255', '0', '0'],
+        orange: ['255', '100', '0'],
+        green: ['0', '255', '0']
+    }
     const pythonExe = path.join(__dirname, 'env', 'bin', 'python3');
     const scriptPath = path.join(__dirname, 'bridge_led.py');
 
     // Spawn the process
-    pythonBridgeLED = spawn(pythonExe, [scriptPath], {
+    pythonBridgeLED = spawn(pythonExe, [
+        scriptPath, 
+        '--color1', ...colors[color1], 
+        '--color2', ...colors[color2]
+    ], {
         detached: true,
         env: { ...process.env, PYTHONUNBUFFERED: '1' }
     });
@@ -163,6 +174,23 @@ function launchGame(gameName) {
     stopRFID();
     stopLED();
 
+    let gameColors = {
+        minish: {
+            color1: "green",
+            color2: "blue"
+        },
+        country: {
+            color1: "green",
+            color2: "orange"
+        },
+        ruby: {
+            color1: "red",
+            color2: "orange"
+        }
+    }
+
+    startLED(gameColors[gameName]['color1'], gameColors[gameName]['color2']);
+
     isGameRunning = true;
     activeGame = gameName;
     //mainWindow.hide(); // Hide your Electron UI
@@ -183,7 +211,7 @@ function launchGame(gameName) {
         isGameRunning = false;
         activeGame = '';
         startRFID();
-        startLED();
+        startLED('pink', 'blue');
         //mainWindow.show();
         mainWindow.focus();
     });
@@ -196,7 +224,7 @@ function launchGame(gameName) {
 app.whenReady().then(() => {
     createWindow();
     startRFID();
-    startLED();
+    startLED('pink', 'blue');
 
     // Debug
     // setTimeout(() => (launchGame('minish')), 10000);
