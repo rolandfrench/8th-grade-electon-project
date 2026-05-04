@@ -53,7 +53,7 @@ function startRFID() {
     }
 
     const pythonExe = path.join(__dirname, 'env', 'bin', 'python3');
-    const scriptPath = path.join(__dirname, 'bridge.py');
+    const scriptPath = path.join(__dirname, 'bridge_led.py');
 
     // Spawn the process
     pythonBridge = spawn(pythonExe, [scriptPath], {
