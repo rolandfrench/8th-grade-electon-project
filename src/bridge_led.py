@@ -1,10 +1,27 @@
 import sys
 import os
-import time
-import math
-import board
-import busio
-import neopixel_spi  # The filename we found with 'ls'
+from pathlib import Path
+
+# --- AGGRESSIVE PATH FIX ---
+# This finds your venv site-packages folder regardless of how the script is called
+venv_pkgs = Path("/home/roland/rfid_env/lib/python3.13/site-packages")
+
+if venv_pkgs.exists():
+    sys.path.insert(0, str(venv_pkgs))
+else:
+    print(f"Error: Could not find venv at {venv_pkgs}")
+
+# Now try the import
+try:
+    import neopixel_spi
+    import board
+    import busio
+    print("Success: neopixel_spi found!")
+except ImportError as e:
+    print(f"Still missing: {e}")
+    # Let's see what is actually in that folder from Python's perspective
+    print("Files found in site-packages:", os.listdir(str(venv_pkgs))[:10])
+    sys.exit(1)
 
 # Setup SPI1 (Pin 38 for Data, Pin 40 for Clock - though WS2812 ignores clock)
 spi = busio.SPI(board.D21, MOSI=board.D20)
