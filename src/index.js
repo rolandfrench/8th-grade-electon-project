@@ -194,7 +194,7 @@ function launchGame(gameName) {
 
     setTimeout(() => {
         startLED(gameColors[gameName]['color1'], gameColors[gameName]['color2']);
-    }, 100);
+    }, 1000);
 
     isGameRunning = true;
     activeGame = gameName;
