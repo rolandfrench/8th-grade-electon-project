@@ -2,62 +2,53 @@ import sys
 import os
 import time
 import math
-import board
-import busio
-
+import signal # Added for SIGTERM
 from pathlib import Path
 
-# --- AGGRESSIVE PATH FIX ---
-# This finds your venv site-packages folder regardless of how the script is called
+# --- PATH FIX ---
 venv_pkgs = Path("/home/roland/rfid_env/lib/python3.13/site-packages")
-
 if venv_pkgs.exists():
     sys.path.insert(0, str(venv_pkgs))
-else:
-    print(f"Error: Could not find venv at {venv_pkgs}")
 
-# Now try the import
-try:
-    import neopixel_spi
-    import board
-    import busio
-    print("Success: neopixel_spi found!")
-except ImportError as e:
-    print(f"Still missing: {e}")
-    # Let's see what is actually in that folder from Python's perspective
-    print("Files found in site-packages:", os.listdir(str(venv_pkgs))[:10])
-    sys.exit(1)
+import board
+import busio
+import neopixel_spi
 
-# Setup SPI1 (Pin 38 for Data, Pin 40 for Clock - though WS2812 ignores clock)
+# --- LED SETUP ---
 spi = busio.SPI(board.D21, MOSI=board.D20)
-
-# Initialize the 3 LEDs
 pixels = neopixel_spi.NeoPixel_SPI(spi, 3, brightness=0.5, auto_write=False)
+
+def cleanup_and_exit(signum, frame):
+    """Turns off LEDs and exits gracefully"""
+    print(f"\nStopping LED process (Signal: {signum})...")
+    pixels.fill((0, 0, 0))
+    pixels.show()
+    sys.exit(0)
+
+# Register the signals to our cleanup function
+signal.signal(signal.SIGTERM, cleanup_and_exit) # For systemctl stop
+signal.signal(signal.SIGINT, cleanup_and_exit)  # For Ctrl+C
 
 TRIGGER_FILE = ".alert"
 
 def get_color(t):
-    """Interpolates between Hot Pink (255,0,150) and Electric Blue (0,50,255)"""
     r = int(255 * (1 - t))
     g = int(50 * t)
     b = int(150 + (105 * t))
     return (r, g, b)
 
 step = 0
-print("Cyberpunk Circle Active (Running on SPI1)...")
+print("Cyberpunk Circle Active. Waiting for SIGTERM or Ctrl+C to clean up...")
 
 try:
     while True:
-        # Check for the 'Handshake' file from the RFID script
         if os.path.exists(TRIGGER_FILE):
             os.remove(TRIGGER_FILE)
-            pixels.fill((255, 255, 255)) # Flash White
+            pixels.fill((255, 255, 255))
             pixels.show()
             time.sleep(0.2)
 
-        # The 'Circle' Logic
         for i in range(3):
-            # Offset of 2.0 makes the 3 LEDs look like they are chasing
             t = (math.sin(step + (i * 2.0)) + 1) / 2
             pixels[i] = get_color(t)
         
@@ -65,6 +56,8 @@ try:
         step += 0.1 
         time.sleep(0.02)
 
-except KeyboardInterrupt:
+except Exception as e:
+    # Just in case something else breaks, turn off the lights
     pixels.fill((0, 0, 0))
     pixels.show()
+    print(f"Error: {e}")
