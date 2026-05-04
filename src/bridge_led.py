@@ -1,5 +1,10 @@
 import sys
 import os
+import time
+import math
+import board
+import busio
+
 from pathlib import Path
 
 # --- AGGRESSIVE PATH FIX ---
