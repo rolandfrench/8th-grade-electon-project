@@ -2,7 +2,7 @@ const { app, BrowserWindow, ipcMain } = require('electron');
 const path = require('node:path');
 const { spawn } = require('child_process');
 const pythonExe = path.join(__dirname, 'env', 'bin', 'python3');
-const scriptPath = path.join(__dirname, 'bridge.py');
+//const scriptPath = path.join(__dirname, 'bridge.py');
 
 let mainWindow;
 let pythonBridgeRFID = null;
