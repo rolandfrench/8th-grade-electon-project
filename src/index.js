@@ -161,6 +161,7 @@ function launchGame(gameName) {
 
     // Once we get what we need, shut it down
     stopRFID();
+    stopLED();
 
     isGameRunning = true;
     activeGame = gameName;
