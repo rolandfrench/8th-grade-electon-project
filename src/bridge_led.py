@@ -2,7 +2,8 @@ import sys
 import os
 import time
 import math
-import signal # Added for SIGTERM
+import signal
+import argparse  # Added for CLI parameters
 from pathlib import Path
 
 # --- PATH FIX ---
@@ -14,31 +15,41 @@ import board
 import busio
 import neopixel_spi
 
+# --- ARGUMENT PARSING ---
+parser = argparse.ArgumentParser(description="Cyberpunk LED Bridge")
+# Add arguments for two colors (each takes 3 integers: R G B)
+parser.add_argument('--color1', nargs=3, type=int, default=[255, 0, 150], 
+                    help='First RGB color (e.g., 255 0 150)')
+parser.add_argument('--color2', nargs=3, type=int, default=[0, 50, 255], 
+                    help='Second RGB color (e.g., 0 50 255)')
+args = parser.parse_args()
+
+c1 = args.color1
+c2 = args.color2
+
 # --- LED SETUP ---
 spi = busio.SPI(board.D21, MOSI=board.D20)
 pixels = neopixel_spi.NeoPixel_SPI(spi, 3, brightness=0.5, auto_write=False)
 
 def cleanup_and_exit(signum, frame):
-    """Turns off LEDs and exits gracefully"""
-    print(f"\nStopping LED process (Signal: {signum})...")
     pixels.fill((0, 0, 0))
     pixels.show()
     sys.exit(0)
 
-# Register the signals to our cleanup function
-signal.signal(signal.SIGTERM, cleanup_and_exit) # For systemctl stop
-signal.signal(signal.SIGINT, cleanup_and_exit)  # For Ctrl+C
+signal.signal(signal.SIGTERM, cleanup_and_exit)
+signal.signal(signal.SIGINT, cleanup_and_exit)
 
 TRIGGER_FILE = ".alert"
 
 def get_color(t):
-    r = int(255 * (1 - t))
-    g = int(50 * t)
-    b = int(150 + (105 * t))
+    """Interpolates between the two CLI-provided colors"""
+    r = int(c1[0] * (1 - t) + c2[0] * t)
+    g = int(c1[1] * (1 - t) + c2[1] * t)
+    b = int(c1[2] * (1 - t) + c2[2] * t)
     return (r, g, b)
 
 step = 0
-print("Cyberpunk Circle Active. Waiting for SIGTERM or Ctrl+C to clean up...")
+print(f"Looping between {c1} and {c2}...")
 
 try:
     while True:
@@ -55,9 +66,7 @@ try:
         pixels.show()
         step += 0.1 
         time.sleep(0.02)
-
 except Exception as e:
-    # Just in case something else breaks, turn off the lights
     pixels.fill((0, 0, 0))
     pixels.show()
     print(f"Error: {e}")
