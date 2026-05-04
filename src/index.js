@@ -221,6 +221,8 @@ ipcMain.on('launch-game', (event, data) => {
 // explicitly with Cmd + Q.
 app.on('window-all-closed', () => {
     if (process.platform !== 'darwin') {
+        stopRFID();
+        stopLED();
         app.quit();
     }
 });
