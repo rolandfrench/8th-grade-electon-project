@@ -2,49 +2,45 @@ import os
 import time
 import math
 import board
-from adafruit_blinka_raspberry_pi5_neopixel import Pi5Pixelbuf
+import busio
+import adafruit_neopixel_spi as neopixel
 
-# Setup
-num_pixels = 3
-pixel_pin = board.D18
-pixels = Pi5Pixelbuf(pixel_pin, num_pixels, auto_write=False)
+# Setup SPI1: MOSI is GPIO 20 (Pin 38)
+# We don't need MISO or SCLK for LEDs, but the library needs the object
+spi = busio.SPI(board.D21, MOSI=board.D20) 
+
+# Initialize 3 LEDs
+pixels = neopixel.NeoPixel_SPI(spi, 3, brightness=1.0, auto_write=False)
 
 TRIGGER_FILE = ".alert"
 
 def get_color(t):
-    """Interpolates between Hot Pink and Electric Blue"""
-    # Pink: (255, 0, 150) | Blue: (0, 50, 255)
+    # Pink (255, 0, 150) to Blue (0, 50, 255)
     r = int(255 * (1 - t))
     g = int(50 * t)
     b = int(150 + (105 * t))
     return (r, g, b)
 
-print("Cyberpunk Chase Active...")
-
 step = 0
-# The 'offset' determines how spread out the colors are.
-# With 3 LEDs, 2.0 is a good value to see distinct colors on each.
-offset = 2.0 
+offset = 2.0
+
+print("LED Process Running on SPI1 (No Sudo!)...")
 
 try:
     while True:
-        # RFID Interrupt
         if os.path.exists(TRIGGER_FILE):
             os.remove(TRIGGER_FILE)
             pixels.fill((255, 255, 255))
             pixels.show()
-            time.sleep(0.3)
+            time.sleep(0.2)
 
-        # Update each LED independently
-        for i in range(num_pixels):
-            # Calculate a unique 't' for this specific LED
+        for i in range(3):
             t = (math.sin(step + (i * offset)) + 1) / 2
             pixels[i] = get_color(t)
         
         pixels.show()
-        
-        step += 0.1  # Speed of the rotation
-        time.sleep(0.03)
+        step += 0.1 
+        time.sleep(0.02)
 
 except KeyboardInterrupt:
     pixels.fill((0, 0, 0))
