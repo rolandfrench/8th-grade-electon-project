@@ -216,7 +216,10 @@ function launchGame(gameName) {
         isGameRunning = false;
         activeGame = '';
         startRFID();
-        startLED('pink', 'blue');
+        stopLED();
+        setTimeout(() => {
+            startLED('pink', 'blue');
+        }, 250);
         //mainWindow.show();
         mainWindow.focus();
     });
